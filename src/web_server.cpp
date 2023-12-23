@@ -1,38 +1,34 @@
 #include "web_server.h"
 
-WebServer::WebServer()
+WebServer::WebServer(MpuServer &mpuServer)
     : server(80),
       currentTime(0),
       previousTime(0),
-      timeoutTime(2000){}
+      timeoutTime(2000),
+      mpuServer(mpuServer){}
 
 void WebServer::begin()
 {
     server.begin();
 }
 
-int WebServer::handleClient()
+void WebServer::handleClient()
 {
     WiFiClient client = server.available();
-    int interval = 0;
 
     if (client)
     {
-        interval = handleIncomingRequest(client);
+        handleIncomingRequest(client);
     }
-    
-    return interval;
 }
 
-int WebServer::handleIncomingRequest(WiFiClient &client)
+void WebServer::handleIncomingRequest(WiFiClient &client)
 {
-    currentTime = millis();
-    previousTime = currentTime;
     Serial.println("New Client.");
     String currentLine = "";
     int interval = 0;
     
-    while (client.connected() && currentTime - previousTime <= timeoutTime)
+    while (client.connected())
     {
         currentTime = millis();
 
@@ -55,34 +51,33 @@ int WebServer::handleIncomingRequest(WiFiClient &client)
         }
     }
 
-    interval = handleHeader();
+    handleHeader();
     sendHttpResponse(client);
     resetConnection(client);
-    return interval;
 }
+
+
 void WebServer::sendHttpResponse(WiFiClient &client) {
+    // Get MPU data
+    String mpuInfo = mpuServer.getData();
+    Serial.println(mpuInfo);
+    mpuInfo.replace("\n", "<br>");
+    Serial.println(mpuInfo);
+
     // Construct the entire HTML response as a single string
     String httpResponse = "HTTP/1.1 200 OK\r\n"
                           "Content-type:text/html\r\n"
                           "Connection: close\r\n\r\n"
-                          "<!DOCTYPE html><html><head><title>LED Control</title>"
+                          "<!DOCTYPE html><html><head><title>MPU Info</title>"
                           "<style>"
                           "body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial, sans-serif; }"
                           "h1 { font-size: 72px; }"
-                          "button { font-size: 48px; padding: 40px 80px; margin: 20px; border: none; border-radius: 16px; cursor: pointer; }"
-                          "button.on { background-color: #4CAF50; color: white; }"
-                          "button.off { background-color: #f44336; color: white; }"
-                          "input { font-size: 48px; padding: 20px; margin: 20px; text-align: center; }"
+                          "p { font-size: 24px; }"  // Adjust the font size as needed
                           "</style>"
                           "</head><body>"
                           "<div style='text-align:center;'>"
-                          "<h1>LED Control</h1>"
-                          "<p><a href=\"/led/on\"><button class='on'>Turn On LED</button></a></p>"
-                          "<p><a href=\"/led/off\"><button class='off'>Turn Off LED</button></a></p>"
-                          "<form action='/led/set' method='get'>"
-                          "<input type='text' id='number' name='number' placeholder='Enter a number'>"
-                          "<button type='submit'>Set Interval</button>"
-                          "</form>"
+                          "<h1>MPU Information</h1>"
+                          "<p>" + mpuInfo + "</p>"
                           "</div>"
                           "</body></html>";
 
@@ -91,39 +86,27 @@ void WebServer::sendHttpResponse(WiFiClient &client) {
 }
 
 
-int WebServer::handleHeader()
+
+void WebServer::handleHeader()
 {
     if (header.indexOf("GET /favicon.ico") >= 0)
     {
-        return 0;
+        return;
     }
 
     Serial.print(header);
 
-    if (header.indexOf("GET /led/on") >= 0)
+    if (header.indexOf("GET /mpu/info") >= 0)
     {
         Serial.println("Turning On LED");
         digitalWrite(LED_BUILTIN, HIGH);
     }
 
-    if (header.indexOf("GET /led/off") >= 0)
+    if (header.indexOf("GET /sdcard/info") >= 0)
     {
         Serial.println("Turning Off LED");
         digitalWrite(LED_BUILTIN, LOW);
     }
-
-    if (header.indexOf("GET /led/set") >= 0)
-    {
-        int interval = 0;
-        int pos = header.indexOf("number=");
-        if (pos != -1)
-            interval = header.substring(pos + 7).toInt();
-
-        Serial.println("Setting interval to " + String(interval));
-        return interval;
-    }
-    
-    return 0;
 }
 
 void WebServer::resetConnection(WiFiClient &client)

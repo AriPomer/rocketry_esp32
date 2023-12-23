@@ -3,24 +3,26 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include "mpu_server.h"
 
 class WebServer
 {
 public:
-    WebServer();
+    WebServer(MpuServer &mpuServer);
     void begin();
-    int handleClient();
+    void handleClient();
 
 private:
     WiFiServer server;
+    MpuServer &mpuServer;
     String header;
     unsigned long currentTime;
     unsigned long previousTime;
     int timeoutTime;
 
-    int handleIncomingRequest(WiFiClient &client);
+    void handleIncomingRequest(WiFiClient &client);
     void sendHttpResponse(WiFiClient &client);
-    int handleHeader();
+    void handleHeader();
     void resetConnection(WiFiClient &client);
 };
 
