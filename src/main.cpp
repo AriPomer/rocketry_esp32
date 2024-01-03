@@ -3,27 +3,36 @@
 #include "mpu_server.h"
 #include "wifi_server.h"
 #include "web_server.h"
+#include "gps_server.h"
 
-#define WIFI_SSID "Partner_95CF"
-#define WIFI_PASS "18664317"
+#define WIFI_SSID "linksys_mesh_2_4"
+#define WIFI_PASS "QWE@123qwe"
+#define GPSSerial Serial1
+#define CHIP_SELECT 5
+#define GPSSerial Serial1
 
+SdcardServer sdcardServer(CHIP_SELECT);
 WifiServer wifiServer(WIFI_SSID, WIFI_PASS, BlinkLed::ENABLE);
-SdcardServer sdcardServer(5);
+GPSServer gpsServer(GPSSerial);
 MpuServer mpuServer;
 WebServer webServer(mpuServer);
 
-unsigned long currentTime = 0;
-
-unsigned long lastMpuPrintTime = 0;
+unsigned long lastMpuTime = 0;
 const float mpuFrequencyHz = 0.5;
-const long mpuPrintInterval = 1000 / mpuFrequencyHz ;
+const long mpuInterval = 1000 / mpuFrequencyHz ;
+
+unsigned long lasGpsTime = 0;
+const float gpsFrequencyHz = 0.5;
+const long gpsInterval = 1000 / gpsFrequencyHz ;
 
 void setup()
 {
     Serial.begin(115200);
 
-    mpuServer.begin();
+    sdcardServer.begin();
     wifiServer.begin();
+    gpsServer.begin();
+    mpuServer.begin();
     webServer.begin();
 
     sdcardServer.begin();
@@ -33,19 +42,25 @@ void setup()
 
 void loop()
 {
-    currentTime = millis();
-
     wifiServer.blinkWifi();
     webServer.handleClient();
 
-    if (currentTime - lastMpuPrintTime >= mpuPrintInterval)
+    if (millis() - lastMpuTime >= mpuInterval)
     {
         String mpuInfo = mpuServer.getData();
         Serial.println(mpuInfo);
         sdcardServer.appendFile("/test.txt", mpuInfo.c_str());
 
-        lastMpuPrintTime = currentTime;
+        lastMpuTime = millis();
     }
 
+    if (millis() - lasGpsTime >= gpsInterval)
+    {
+        String gpsTime = "Time: " + gpsServer.getTime() + " Location: " + gpsServer.getLocation();
+        Serial.println(gpsTime);
+        sdcardServer.appendFile("/test.txt", gpsTime.c_str());
+
+        lasGpsTime = millis();
+    }
 
 }
