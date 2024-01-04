@@ -7,9 +7,8 @@
 
 #define WIFI_SSID "linksys_mesh_2_4"
 #define WIFI_PASS "QWE@123qwe"
-#define GPSSerial Serial1
 #define CHIP_SELECT 5
-#define GPSSerial Serial1
+#define GPSSerial Serial2
 
 SdcardServer sdcardServer(CHIP_SELECT);
 WifiServer wifiServer(WIFI_SSID, WIFI_PASS, BlinkLed::ENABLE);
@@ -19,11 +18,13 @@ WebServer webServer(mpuServer);
 
 unsigned long lastMpuTime = 0;
 const float mpuFrequencyHz = 0.5;
-const long mpuInterval = 1000 / mpuFrequencyHz ;
+const long mpuInterval = 1000 / mpuFrequencyHz;
 
 unsigned long lasGpsTime = 0;
 const float gpsFrequencyHz = 0.5;
-const long gpsInterval = 1000 / gpsFrequencyHz ;
+const long gpsInterval = 1000 / gpsFrequencyHz;
+
+uint32_t timer = millis();
 
 void setup()
 {
@@ -56,11 +57,76 @@ void loop()
 
     if (millis() - lasGpsTime >= gpsInterval)
     {
-        String gpsTime = "Time: " + gpsServer.getTime() + " Location: " + gpsServer.getLocation();
-        Serial.println(gpsTime);
-        sdcardServer.appendFile("/test.txt", gpsTime.c_str());
+        char c = gpsServer.GPS.read();
 
-        lasGpsTime = millis();
+        if (gpsServer.GPS.newNMEAreceived())
+        {
+            Serial.print(gpsServer.GPS.lastNMEA());   // this also sets the newNMEAreceived() flag to false
+            if (!gpsServer.GPS.parse(gpsServer.GPS.lastNMEA())) // this also sets the newNMEAreceived() flag to false
+                return;                     // we can fail to parse a sentence in which case we should just wait for another
+        }
+
+        // approximately every 2 seconds or so, print out the current stats
+        if (millis() - timer > 2000)
+        {
+            timer = millis(); // reset the timer
+            Serial.print("\nTime: ");
+            if (gpsServer.GPS.hour < 10)
+            {
+                Serial.print('0');
+            }
+            Serial.print(gpsServer.GPS.hour, DEC);
+            Serial.print(':');
+            if (gpsServer.GPS.minute < 10)
+            {
+                Serial.print('0');
+            }
+            Serial.print(gpsServer.GPS.minute, DEC);
+            Serial.print(':');
+            if (gpsServer.GPS.seconds < 10)
+            {
+                Serial.print('0');
+            }
+            Serial.print(gpsServer.GPS.seconds, DEC);
+            Serial.print('.');
+            if (gpsServer.GPS.milliseconds < 10)
+            {
+                Serial.print("00");
+            }
+            else if (gpsServer.GPS.milliseconds > 9 && gpsServer.GPS.milliseconds < 100)
+            {
+                Serial.print("0");
+            }
+            Serial.println(gpsServer.GPS.milliseconds);
+            Serial.print("Date: ");
+            Serial.print(gpsServer.GPS.day, DEC);
+            Serial.print('/');
+            Serial.print(gpsServer.GPS.month, DEC);
+            Serial.print("/20");
+            Serial.println(gpsServer.GPS.year, DEC);
+            Serial.print("Fix: ");
+            Serial.print((int)gpsServer.GPS.fix);
+            Serial.print(" quality: ");
+            Serial.println((int)gpsServer.GPS.fixquality);
+            if (gpsServer.GPS.fix)
+            {
+                Serial.print("Location: ");
+                Serial.print(gpsServer.GPS.latitude, 4);
+                Serial.print(gpsServer.GPS.lat);
+                Serial.print(", ");
+                Serial.print(gpsServer.GPS.longitude, 4);
+                Serial.println(gpsServer.GPS.lon);
+                Serial.print("Speed (knots): ");
+                Serial.println(gpsServer.GPS.speed);
+                Serial.print("Angle: ");
+                Serial.println(gpsServer.GPS.angle);
+                Serial.print("Altitude: ");
+                Serial.println(gpsServer.GPS.altitude);
+                Serial.print("Satellites: ");
+                Serial.println((int)gpsServer.GPS.satellites);
+                Serial.print("Antenna status: ");
+                Serial.println((int)gpsServer.GPS.antenna);
+            }
+        }
     }
-
 }

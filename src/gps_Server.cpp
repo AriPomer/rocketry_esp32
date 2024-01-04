@@ -1,6 +1,6 @@
 #include "gps_server.h"
 
-GPSServer::GPSServer(HardwareSerial& serialPort) : GPS(&serialPort), serialPort(serialPort){}
+GPSServer::GPSServer(HardwareSerial &serialPort) : GPS(&serialPort), serialPort(serialPort) {}
 
 void GPSServer::begin()
 {
@@ -13,6 +13,18 @@ void GPSServer::begin()
     delay(1000);
 
     serialPort.println(PMTK_Q_RELEASE);
+}
+
+void GPSServer::checkData()
+{
+    GPS.read();
+    
+    if (GPS.newNMEAreceived())
+    {
+        GPS.lastNMEA();   // this also sets the newNMEAreceived() flag to false
+        if (!GPS.parse(GPS.lastNMEA())) // this also sets the newNMEAreceived() flag to false
+            return;
+    }
 }
 
 String GPSServer::getTime()
@@ -41,7 +53,7 @@ String GPSServer::getQuality()
 
 String GPSServer::getLocation()
 {
-    return (String(GPS.latitude, 4) + "N, " + String(GPS.longitude, 4) +"W");
+    return (String(GPS.latitude, 4) + "N, " + String(GPS.longitude, 4) + "W");
 }
 
 String GPSServer::getSpeed()
