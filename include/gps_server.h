@@ -5,7 +5,7 @@
 
 class GPSServer {
 public:
-  GPSServer(HardwareSerial& serialPort);
+  GPSServer(HardwareSerial *serialPort);
   void begin();
   void checkData();
   String getTime();
@@ -20,7 +20,6 @@ public:
   String getAntennaStatus();
 public:
   Adafruit_GPS GPS;
-  HardwareSerial& serialPort;
 };
 
 #endif // GPS_SERVER_H

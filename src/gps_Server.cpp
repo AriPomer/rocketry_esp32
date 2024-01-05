@@ -1,6 +1,6 @@
 #include "gps_server.h"
 
-GPSServer::GPSServer(HardwareSerial &serialPort) : GPS(&serialPort), serialPort(serialPort) {}
+GPSServer::GPSServer(HardwareSerial *serialPort) : GPS(serialPort) {}
 
 void GPSServer::begin()
 {
@@ -12,7 +12,7 @@ void GPSServer::begin()
 
     delay(1000);
 
-    serialPort.println(PMTK_Q_RELEASE);
+    // serialPort.println(PMTK_Q_RELEASE);
 }
 
 void GPSServer::checkData()
