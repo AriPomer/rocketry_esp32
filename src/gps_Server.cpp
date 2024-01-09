@@ -1,6 +1,6 @@
 #include "gps_server.h"
 
-GPSServer::GPSServer(HardwareSerial *serialPort) : GPS(serialPort) {}
+GPSServer::GPSServer() : GPS(&GPSSerial) {}
 
 void GPSServer::begin()
 {

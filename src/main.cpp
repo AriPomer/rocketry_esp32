@@ -7,30 +7,25 @@
 #include "mpl_server.h"
 
 // definitions
-#define WIFI_SSID "linksys_mesh_2_4"
-#define WIFI_PASS "QWE@123qwe"
+// #define WIFI_SSID "linksys_mesh_2_4"
+// #define WIFI_PASS "QWE@123qwe"
+
+#define WIFI_SSID "Partner_95CF"
+#define WIFI_PASS "18664317"
+
 #define SDCARD_CHIP_SELECT 5
-#define GPSSerial Serial2
 #define SeaLevelPressure 1013.26
+
 // objects
 SdcardServer sdcardServer(SDCARD_CHIP_SELECT);
 WifiServer wifiServer(WIFI_SSID, WIFI_PASS, BlinkLed::ENABLE);
-GPSServer gpsServer(&GPSSerial);
+GPSServer gpsServer;
 MpuServer mpuServer; 
 MPLSserver mplServer;
 WebServer webServer(mpuServer);
 
 // taskhandles
 TaskHandle_t webServerTask;
-
-void webServerTaskFunction(void *parameter)
-{
-    while (1)
-    {
-        webServer.handleClient();
-        vTaskDelay(pdMS_TO_TICKS(10)); // 10 ms delay
-    }
-}
 
 // timing variables
 unsigned long lastMpuTime = 0;
@@ -63,9 +58,19 @@ void setup()
     sdcardServer.writeFile("/test.txt", "Info\n");
 }
 
+void webServerTaskFunction(void *parameter)
+{
+    while (1)
+    {
+        webServer.handleClient();
+        vTaskDelay(pdMS_TO_TICKS(10)); // 10 ms delay
+    }
+}
+
 void loop()
 {
     wifiServer.blinkWifi();
+    // webServer.handleClient();
     xTaskCreate(webServerTaskFunction, "webServerTask", 10000, NULL, 5, &webServerTask);
 
     if (millis() - lastMpuTime >= mpuInterval)

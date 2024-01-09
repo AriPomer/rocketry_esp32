@@ -2,10 +2,10 @@
 
 WebServer::WebServer(MpuServer &mpuServer)
     : server(80),
+      mpuServer(mpuServer),
       currentTime(0),
       previousTime(0),
-      timeoutTime(2000),
-      mpuServer(mpuServer){}
+      timeoutTime(2000){}
 
 void WebServer::begin()
 {

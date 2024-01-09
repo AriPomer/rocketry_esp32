@@ -3,9 +3,12 @@
 
 #include <Adafruit_GPS.h>
 
+// TX-RX harware serial number on esp32
+#define GPSSerial Serial2
+
 class GPSServer {
 public:
-  GPSServer(HardwareSerial *serialPort);
+  GPSServer();
   void begin();
   void checkData();
   String getTime();
