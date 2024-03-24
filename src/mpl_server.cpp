@@ -12,17 +12,17 @@ void MPLSserver::begin(float SLP)
 String MPLSserver::getPressure()
 {
     float pressure = baro.getPressure();
-    return "pressure = " + String(pressure) + " hPa";
+    return String(pressure);
 }
 
 String MPLSserver::getAltitude()
 {
     float altitude = baro.getAltitude();
-    return "altitude = " + String(altitude) + " m";
+    return String(altitude);
 }
 
 String MPLSserver::getTemperature()
 {
     float temperature = baro.getTemperature();
-    return "temperature = " + String(temperature) + " C";
+    return String(temperature);
 }

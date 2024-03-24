@@ -1,134 +1,92 @@
 #include <Arduino.h>
 #include "sdcard_server.h"
 #include "mpu_server.h"
-#include "wifi_server.h"
-#include "web_server.h"
-// #include "gps_server.h"
+#include "gps_server.h"
 #include "mpl_server.h"
 
 #include <XBee.h>
 #include <HardwareSerial.h>
+#include <WiFi.h>
+#include <WiFiUdp.h>
 
 // definitions
-// #define WIFI_SSID "linksys_mesh_2_4"
-// #define WIFI_PASS "QWE@123qwe"
-
-#define WIFI_SSID "Partner_95CF"
-#define WIFI_PASS "18664317"
+const char* ssid = "rocket_esp32";
+const char* udpBroadcastIP = "255.255.255.255";
+const int udpServerPort = 5555;
 
 #define SDCARD_CHIP_SELECT 5
 #define SeaLevelPressure 1013.26
 
 // objects
-// SdcardServer sdcardServer(SDCARD_CHIP_SELECT);
-// WifiServer wifiServer(WIFI_SSID, WIFI_PASS, BlinkLed::ENABLE);
-// GPSServer gpsServer;
-// MpuServer mpuServer; 
-// MPLSserver mplServer;
-// WebServer webServer(mpuServer);
+SdcardServer sdcardServer(SDCARD_CHIP_SELECT);
+GPSServer gpsServer;
+MpuServer mpuServer; 
+MPLSserver mplServer;
+WiFiUDP udp;
 
 // taskhandles
 // TaskHandle_t webServerTask;
 
-unsigned long lastMpuTime = 0;
-const float mpuFrequencyHz = 0.5;
-const long mpuInterval = 1000 / mpuFrequencyHz;
+unsigned long lastSentMsgTime = 0;
+const unsigned long interval = 0;
 
-unsigned long lasGpsTime = 0;
-const float gpsFrequencyHz = 0.5;
-const long gpsInterval = 1000 / gpsFrequencyHz;
-
-unsigned long lasMplTime = 0;
-const float mplFrequencyHz = 0.5;
-const long mplInterval = 1000 / gpsFrequencyHz;
-
-uint32_t timer = millis();
 
 void setup()
 {
     Serial.begin(115200);
     Serial1.begin(9600, SERIAL_8N1, 9, 10);
 
-    // sdcardServer.begin();
-    // wifiServer.begin();
-    // gpsServer.begin();
-    // mpuServer.begin();
-    // mplServer.begin(SeaLevelPressure);
-    // webServer.begin();
+    sdcardServer.begin();
+    gpsServer.begin();
+    mpuServer.begin();
+    mplServer.begin(SeaLevelPressure);
     
-    // sdcardServer.begin();
-    // sdcardServer.deleteFile("/test.txt");
-    // sdcardServer.writeFile("/test.txt", "Info\n");
+    sdcardServer.begin();
+    sdcardServer.deleteFile("/test.txt");
+    sdcardServer.writeFile("/test.txt", "");
 }
 
-// void webServerTaskFunction(void *parameter)
-// {
-//     while (1)
-//     {
-//         webServer.handleClient();
-//         vTaskDelay(pdMS_TO_TICKS(10)); // 10 ms delay
-//     }
-// }
+void broadcast_udp(const String& msg)
+{
+  udp.beginPacket(udpBroadcastIP, udpServerPort);
+  udp.print(msg);
+  udp.endPacket();
+}
 
 void loop()
 {
-    // wifiServer.blinkWifi();
-    // webServer.handleClient();
-    // xTaskCreate(webServerTaskFunction, "webServerTask", 10000, NULL, 5, &webServerTask);
+    unsigned long timeNow = millis();
 
     Serial.println("Sending to Serial1");
     Serial1.println("Hello from Serial1");
 
-    // String receivedData = "";
-    // while (Serial1.available()) {
-    //     char incomingByte = Serial1.read();
-    //     if (incomingByte == '\n') {
-    //     // End of line, process received data
-    //     Serial.print("Received from XBee: ");
-    //     Serial.println(receivedData);
-    //     // Clear the buffer for the next message
-    //     receivedData = "";
-    //     } else {
-    //     // Append to receivedData
-    //     receivedData += incomingByte;
-    //     }
-    // }
-
     delay(2000);
 
-    // if (millis() - lastMpuTime >= mpuInterval)
-    // {
-    //     String mplAltitude = mplServer.getAltitude();
-    //     Serial.println(mplAltitude);
-    //     sdcardServer.appendFile("/test.txt", mplAltitude.c_str());
 
-    //     lastMpuTime = millis();
-    // }
+    if (timeNow - lastSentMsgTime >= interval)
+    {
+        String altMsg = "'altitude': '" + mplServer.getAltitude() + "'";
 
-    // if (millis() - lasMplTime >= mplInterval)
-    // {
-    //     String mpuInfo = mpuServer.getData();
-    //     Serial.println(mpuInfo);
-    //     sdcardServer.appendFile("/test.txt", mpuInfo.c_str());
+        gpsServer.checkData();
+        String gpsLatMsg = "'lat': '" + String(gpsServer.GPS.latitude, 4) + "'";
+        String gpsLonMsg = "'lon': '" + String(gpsServer.GPS.longitude, 4) + "'";
 
-    //     lasMplTime = millis();
-    // }
+        // send udp messages
+        broadcast_udp(altMsg);
+        broadcast_udp(gpsLatMsg);
+        broadcast_udp(gpsLonMsg);
 
-    // if (millis() - lasGpsTime >= gpsInterval)
-    // {
-    //     gpsServer.checkData();
+        // send xbee messages
+        Serial1.println(altMsg);
+        Serial1.println(gpsLatMsg);
+        Serial1.println(gpsLonMsg);
 
-    //     String gpsSatelites = "Satelites: " + gpsServer.getSatellites();
-    //     String gpsTime = "Time: " + gpsServer.getTime();
-    //     String gpsLocation = "Location: " + gpsServer.getLocation();
+        // save to sdcard
+        sdcardServer.appendFile("/test.txt", altMsg.c_str());
+        sdcardServer.appendFile("/test.txt", gpsLatMsg.c_str());
+        sdcardServer.appendFile("/test.txt", gpsLonMsg.c_str());
 
-    //     Serial.println(gpsSatelites);
-    //     Serial.println(gpsTime);
-    //     Serial.println(gpsLocation);
+        lastSentMsgTime = timeNow;
+    }
 
-    //     sdcardServer.appendFile("/test.txt", gpsTime.c_str());
-    //     sdcardServer.appendFile("/test.txt", gpsLocation.c_str());
-
-    //     lasGpsTime = millis();
-    // }
 }
